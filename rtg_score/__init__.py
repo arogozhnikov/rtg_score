@@ -57,15 +57,15 @@ def compute_RTG_score(
         Example: ['clone']
         Explanation: if ['batch', 'donor'] are included while ['clone'] is excluded, we measure how much samples
         with the same batch AND donor, but different clones are similar to each other.
-    :param embeddings: numerical description of each sample. DataFrame or np.array of shape [n_sample, n_features],
+    :param embeddings: numerical description of each sample. DataFrame or np.array of shape [n_sample, n_features].
         Order of embeddings should match order of rows in metadata
     :param metric: distance used to evaluate similarity. Possible choices are:
         - 'euclidean', relevant e.g. for delta Ct gene expression or for different embeddings
         - 'hellinger', relevant e.g. for cell type fractions in scRNA-seq
         - 'cosine', frequently more appropriate for DL embeddings
         - other distances from scipy and sklearn are supported
-    :param pairwise_distances: alternatively distances between all the pairs can be readily provided
-        (in this case, don't pass embeddings and metric)
+    :param pairwise_distances: alternatively distances between all the pairs can be readily provided.
+        np.array of shape [n_samples, n_samples] (in this case, don't pass embeddings and metric)
     :param minimal_n_samples: number of samples that can provide ranking (otherwise function returns NaN).
         E.g. if both include and exclude are the same confounders, or if latter includes former, there are no elements
         that can provide ranking.
@@ -136,15 +136,15 @@ def compute_RTG_contribution_matrix(
             'clone': ['clone']
         }
         Score is computed for all pairs of included and excluded confounding variables.
-    :param embeddings: numerical description of each sample. DataFrame or np.array of shape [n_sample, n_features],
+    :param embeddings: numerical description of each sample. DataFrame or np.array of shape [n_sample, n_features].
         Order of embeddings should match order of rows in metadata
     :param metric: distance used to evaluate similarity. Possible choices are:
         - 'euclidean', relevant e.g. for delta Ct gene expression or for different embeddings
         - 'hellinger', relevant e.g. for cell type fractions in scRNA-seq
         - 'cosine', frequently more appropriate for DL embeddings
         - other distances from scipy and sklearn are supported
-    :param pairwise_distances: alternatively distances between all the pairs can be readily provided
-        (in this case, don't pass embeddings and metric)
+    :param pairwise_distances: alternatively distances between all the pairs can be readily provided.
+        np.array of shape [n_samples, n_samples] (in this case, don't pass embeddings and metric)
     :param minimal_n_samples: number of samples that can provide ranking (otherwise function returns NaN).
         E.g. if both include and exclude are the same confounders, or if latter includes former, there are no elements
         that can provide ranking.
