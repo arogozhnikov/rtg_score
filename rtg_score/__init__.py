@@ -1,3 +1,8 @@
+"""
+RTG score:
+statistical tool to check contribution of confounding variables to biological models.
+Works with any modality
+"""
 from typing import List, Dict
 
 import numpy as np
@@ -10,6 +15,16 @@ __version__ = '0.1.0'
 class InputErrorRTG(RuntimeError):
     """Generic error caused by incorrect input"""
     pass
+
+
+def to_codes(array):
+    """replace categories with unique integer codes"""
+    return np.unique(array, return_inverse=True)[1]
+
+
+def to_codes_str_series(array):
+    """replace categories with unique string codes"""
+    return pd.Series(to_codes(array)).map(str)
 
 
 def compute_pairwise_distances(
@@ -26,7 +41,7 @@ def compute_pairwise_distances(
         assert len(embeddings) == n_samples, 'number of embeddings should be the same as number of rows in metadata'
         if metric == 'hellinger':
             if np.min(embeddings) < 0:
-                raise InputErrorRTG('hellinger distance requires non-negative elements in embedding')
+                raise InputErrorRTG('Hellinger distance requires non-negative elements in embedding')
             return sklearn_pairwise_distances(np.sqrt(embeddings), metric='euclidean')
         return sklearn_pairwise_distances(embeddings, metric=metric)
     else:
@@ -82,23 +97,21 @@ def compute_RTG_score(
     if len(include_confounders) == 0 or len(exclude_confounders) == 0:
         raise InputErrorRTG(f'include_confounders and exclude_confounders should be non-empty')
 
-    assert len(exclude_confounders) == 1
-
     inc_cat = ''
     for category in include_confounders:
-        inc_cat = inc_cat + metadata[category].map(str)
+        inc_cat = inc_cat + '_' + to_codes_str_series(metadata[category])
 
-    exc_cat = ''
-    for category in exclude_confounders:
-        exc_cat = exc_cat + metadata[category].map(str)
-
+    exc_indices_collection = [
+        to_codes(metadata[category]) for category in exclude_confounders
+    ]
     # recoding for simpler comparison
-    _, inc_indices = np.unique(inc_cat, return_inverse=True)
-    _, exc_indices = np.unique(exc_cat, return_inverse=True)
+    inc_indices = to_codes(inc_cat)
 
     aucs = []
     for sample in range(n_samples):
-        mask = exc_indices != exc_indices[sample]
+        mask = True
+        for exc_indices in exc_indices_collection:
+            mask = mask & (exc_indices != exc_indices[sample])
         target = inc_indices == inc_indices[sample]
         distances = pairwise_distances[sample]
         if len(set(target[mask])) == 2:
