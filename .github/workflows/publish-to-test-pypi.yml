@@ -21,13 +21,15 @@ jobs:
     - name: Build a binary wheel and a source tarball
       run: >-
         python setup.py sdist bdist_wheel --universal
-    - name: Publish distribution 📦 to Test PyPI
+    - name: Publish package to Test PyPI
       uses: pypa/gh-action-pypi-publish@master
       with:
         password: ${{ secrets.test_pypi_password }}
         repository_url: https://test.pypi.org/legacy/
-#    - name: Publish distribution 📦 to PyPI
-#      if: startsWith(github.ref, 'refs/tags')
-#      uses: pypa/gh-action-pypi-publish@master
-#      with:
-#        password: ${{ secrets.pypi_password }}
+    # logic of this action is to upload when something is tagged - it is uploaded to pypi.
+    # version, however, is still defined by code, not github tag
+    - name: Publish package to PyPI
+      if: startsWith(github.ref, 'refs/tags')
+      uses: pypa/gh-action-pypi-publish@master
+      with:
+        password: ${{ secrets.pypi_password }}
