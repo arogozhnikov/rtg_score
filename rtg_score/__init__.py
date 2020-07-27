@@ -120,6 +120,36 @@ def compute_RTG_contribution_matrix(
         pairwise_distances=None,
         minimal_n_samples=30,
 ):
+    """
+    Compute RTG scores for multiple combinations of included and excluded confounding variables.
+
+    :param metadata: DataFrame with confounds (may contain additional variables) of shape [n_samples, n_variables].
+        Examples of variables: clone, donor, batch, plate, position on a plate
+    :param include_confounders_dict: dictionary with confounders and their combinations,
+        Example: {
+            'only donor': ['donor'],
+            'donor&batch': ['donor', 'batch']
+        }
+    :param exclude_confounders_dict: dictionary with confounders and their combinations
+        Example: {
+            'donor': ['donor'],
+            'clone': ['clone']
+        }
+        Score is computed for all pairs of included and excluded confounding variables.
+    :param embeddings: numerical description of each sample. DataFrame or np.array of shape [n_sample, n_features],
+        Order of embeddings should match order of rows in metadata
+    :param metric: distance used to evaluate similarity. Possible choices are:
+        - 'euclidean', relevant e.g. for delta Ct gene expression or for different embeddings
+        - 'hellinger', relevant e.g. for cell type fractions in scRNA-seq
+        - 'cosine', frequently more appropriate for DL embeddings
+        - other distances from scipy and sklearn are supported
+    :param pairwise_distances: alternatively distances between all the pairs can be readily provided
+        (in this case, don't pass embeddings and metric)
+    :param minimal_n_samples: number of samples that can provide ranking (otherwise function returns NaN).
+        E.g. if both include and exclude are the same confounders, or if latter includes former, there are no elements
+        that can provide ranking.
+    :return: resulting scores are organized in pd.DataFrame (NaN elements mean not enough statistics)
+    """
     n_samples = len(metadata)
     pairwise_distances = compute_pairwise_distances(n_samples, embeddings, pairwise_distances, metric=metric)
 
