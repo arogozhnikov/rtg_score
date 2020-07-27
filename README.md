@@ -2,14 +2,14 @@
 
 <img src="example/confounder_contribution.png" width="400" />
 
-Batch, cell line, donor, plate, reprogramming, protocol --- these and other confounding factors influence cell cultures in vitro.
+Batch, cell line, donor, plate, reprogramming, protocol — these and other confounding factors influence cell cultures in vitro.
 
 RTG score tracks contribution of different factors to variability 
-by estimating how Rank maps to Group. 
-Scoring relies on ranking by similarity, so there is no explicit or implicit assumption of linearity.
+by estimating how *R*ank maps *T*o *G*roup. 
+Scoring relies on ranking by similarity, so there are no explicit or implicit assumptions of linearity.
 
 RTG perfectly works with both well-interpretable data (gene expressions, cell types) 
-and embeddings provided by deep-learning.
+and embeddings provided by deep learning.
 
 ## Usage 
 
