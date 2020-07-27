@@ -1,4 +1,4 @@
-name: Test and (if new tag) deploy to PyPI
+name: Run tests and deploy
 
 on: push
 
