@@ -4,6 +4,8 @@ import numpy as np
 import pandas as pd
 from sklearn.metrics import roc_auc_score, pairwise_distances as sklearn_pairwise_distances
 
+__version__ = '0.1.0'
+
 
 class InputErrorRTG(RuntimeError):
     """Generic error caused by incorrect input"""
