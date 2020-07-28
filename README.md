@@ -17,7 +17,7 @@ and embeddings provided by deep learning.
 pip install rtg_score
 ```
 
-RTG score requires two DataFrames: one with confounds and ane with embeddings (or other features, e.g. gene expressions)
+RTG score requires two DataFrames: one with confounds and one with embeddings (or other features, e.g. gene expressions)
 ```python
 from rtg_score import compute_RTG_score
 # following code corresponds to computing an element of the figure above
@@ -46,7 +46,7 @@ Example + code for plotting are available in [`example`](https://github.com/Syst
     - including ['donor', 'batch'] and excluding ['clone', 'plate'] will estimate 
       how similar are samples with same donor and same batch, 
       while omitting pairs which have same clone or grown on the same plate
-    - most cases are simple, like include batch effect while exclude plate, 
+    - most use-cases are simple, like include batch effect while exclude plate, 
       but framework is very flexible 
 
       
