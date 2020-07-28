@@ -1,3 +1,5 @@
+![Run tests and deploy](https://github.com/System1Bio/rtg_score/workflows/Run%20tests%20and%20deploy/badge.svg)
+
 # Rank-To-Group (RTG) score evaluates contribution of confounders
 
 <img src="https://github.com/System1Bio/rtg_score/blob/master/example/confounder_contribution.png?raw=true" width="500" />
