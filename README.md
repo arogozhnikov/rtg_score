@@ -52,3 +52,7 @@ Example + code for plotting are available in [`example`](https://github.com/Syst
       but framework is very flexible 
 
       
+## Example analysis 
+
+[Preprint](https://www.biorxiv.org/content/10.1101/2020.08.26.251611v1) demonstrates  
+application of tool to multimodal analysis, and drawing conclusions base on it.
