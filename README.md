@@ -54,5 +54,7 @@ Example + code for plotting are available in [`example`](https://github.com/Syst
       
 ## Example analysis 
 
-[Preprint](https://www.biorxiv.org/content/10.1101/2020.08.26.251611v1) demonstrates application of RTG score to multimodal analysis, 
+[Preprint](https://www.biorxiv.org/content/10.1101/2020.08.26.251611v1) demonstrates application of RTG score to multimodal analysis of cerebral organoids, 
 and demonstrates which conclusions can be drawn.
+
+See [`example`](https://github.com/System1Bio/rtg_score/blob/master/example/Example_qPCR.ipynb) subfolder for an actual code.
