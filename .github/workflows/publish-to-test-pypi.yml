@@ -15,7 +15,7 @@ jobs:
     # TODO dependencies cache
     - name: Install package and dependencies
       run: |
-        python -m pip install wheel pytest seaborn nbformat nbconvert
+        python -m pip install wheel pytest seaborn nbformat nbconvert jupyter
         python -m pip install .
     - name: Run pytest
       run: python -m pytest -s tests
