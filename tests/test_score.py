@@ -22,7 +22,7 @@ def prepare_qpcr():
 def test_against_reference():
     expression_with_metadata, genes_delta_ct_normalized = prepare_qpcr()
 
-    for fast in [True, False, 'auto']:
+    for use_fast in [True, False, 'auto']:
         contribution_matrix = compute_RTG_contribution_matrix(
             expression_with_metadata,
             include_confounders_dict={
@@ -39,7 +39,7 @@ def test_against_reference():
                 'exclude same\nbatch': ['batch'],
             },
             embeddings=genes_delta_ct_normalized,
-            fast=fast,
+            use_fast_computations=use_fast,
         )
 
         reference_result = {
