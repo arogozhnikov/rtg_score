@@ -60,6 +60,7 @@ def compute_RTG_score(
         metric='euclidean',
         pairwise_distances=None,
         minimal_n_samples=30,
+        fast='auto',
 ) -> float:
     """
     Compute (single) RTG score.
@@ -107,20 +108,65 @@ def compute_RTG_score(
     # recoding for simpler comparison
     inc_indices = to_codes(inc_cat)
 
-    aucs = []
-    for sample in range(n_samples):
+    if fast == 'auto':
+        fast: bool = n_samples > 300
+
+    if fast:
+        target = inc_indices[:, np.newaxis] == inc_indices[np.newaxis, :]
         mask = True
         for exc_indices in exc_indices_collection:
-            mask = mask & (exc_indices != exc_indices[sample])
-        target = inc_indices == inc_indices[sample]
-        distances = pairwise_distances[sample]
-        if len(set(target[mask])) == 2:
-            aucs.append(roc_auc_score(target[mask], -distances[mask]))
+            mask = mask & (exc_indices[:, np.newaxis] != exc_indices[np.newaxis, :])
+        has_ones = (mask & target).any(axis=1)
+        has_zeros = (mask & ~target).any(axis=1)
+        good_rows = np.where(has_ones & has_zeros)[0]
+
+        if len(good_rows) < minimal_n_samples:
+            return np.nan
+
+        # TODO probably need to batch-ify this to reduce peak memory usage
+        roc_auc_scores = []
+        for start in range(0, len(good_rows), 1000):
+            distances = pairwise_distances[good_rows[start: start + 1000]]
+            order_y = np.argsort(-distances, axis=1)
+            order_x = good_rows[start: start + 1000][:, None]
+
+            target_rows = target[order_x, order_y]
+            weight_rows = mask[order_x, order_y]
+
+            fraction_of_zeros_covered = (weight_rows & ~target_rows).astype('float32')
+            fraction_of_zeros_covered = np.cumsum(fraction_of_zeros_covered, axis=1)
+            fraction_of_zeros_covered /= fraction_of_zeros_covered[:, [-1]]
+
+            scores = (fraction_of_zeros_covered * weight_rows * target_rows).sum(axis=1)
+            scores /= (weight_rows & target_rows).astype('float32').sum(axis=1)
+            roc_auc_scores += list(scores)
+        return np.mean(roc_auc_scores)
+    else:
+        aucs = []
+        for sample in range(n_samples):
+            mask = True
+            for exc_indices in exc_indices_collection:
+                mask = mask & (exc_indices != exc_indices[sample])
+            target = inc_indices == inc_indices[sample]
+            distances = pairwise_distances[sample]
+            if len(set(target[mask])) == 2:
+                aucs.append(roc_auc_score(target[mask], -distances[mask]))
 
     if len(aucs) < minimal_n_samples:
         return np.nan
     else:
         return float(np.mean(aucs))
+
+
+def fast_roc_auc(target, distances):
+    order = np.argsort(distances)
+    target = target[order].astype('bool')
+    fraction_of_zeros_covered = (target == 0).astype('float32')
+    fraction_of_zeros_covered = np.cumsum(fraction_of_zeros_covered)
+    fraction_of_zeros_covered /= fraction_of_zeros_covered[-1]
+
+    roc_auc_score = fraction_of_zeros_covered[target].mean()
+    return roc_auc_score
 
 
 def compute_RTG_contribution_matrix(
@@ -132,6 +178,7 @@ def compute_RTG_contribution_matrix(
         metric='euclidean',
         pairwise_distances=None,
         minimal_n_samples=30,
+        fast='auto',
 ):
     """
     Compute RTG scores for multiple combinations of included and excluded confounding variables.
@@ -175,5 +222,6 @@ def compute_RTG_contribution_matrix(
                 exclude_confounders=excluded,
                 pairwise_distances=pairwise_distances,
                 minimal_n_samples=minimal_n_samples,
+                fast=fast,
             )
     return pd.DataFrame(results)
