@@ -1,4 +1,6 @@
 ![Run tests and deploy](https://github.com/System1Bio/rtg_score/workflows/Run%20tests%20and%20deploy/badge.svg)
+[![Run tests and deploy](https://img.shields.io/badge/example-notebook-brightgreen)](https://github.com/herophilus/rtg_score/blob/master/example/Example_qPCR.ipynb)
+
 
 # Rank-To-Group (RTG) score evaluates contribution of confounders
 
