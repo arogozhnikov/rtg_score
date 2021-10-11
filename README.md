@@ -46,8 +46,8 @@ Example + code for plotting are available in [`example`](https://github.com/Syst
       and `hellinger` for cell type distributions
 - included and excluded confounders in example:
     - including ['donor', 'batch'] and excluding ['clone', 'plate'] will estimate 
-      how similar are samples with same donor and same batch, 
-      while omitting pairs which have same clone or grown on the same plate
+      how similar are samples with same donor **and** same batch, 
+      while omitting pairs which have same clone **or** grown on the same plate
     - most use-cases are simple, like include batch effect while exclude plate, 
       but framework is very flexible 
 

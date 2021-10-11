@@ -70,9 +70,9 @@ def compute_RTG_score(
     :param include_confounders: list of confounders to estimate their joint contribution
         Example: pass ['batch', 'donor']
     :param exclude_confounders: list of confounders to exclude,
-        Example: ['clone']
-        Explanation: if ['batch', 'donor'] are included while ['clone'] is excluded, we measure how much samples
-        with the same batch AND donor, but different clones are similar to each other.
+        Example: ['clone', 'plate']
+        Explanation: if ['batch', 'donor'] are included while ['clone', 'plate'] are excluded, we measure how much
+        samples with the same batch AND donor, but different clones AND different plates are similar to each other.
     :param embeddings: numerical description of each sample. DataFrame or np.array of shape [n_sample, n_features].
         Order of embeddings should match order of rows in metadata
     :param metric: distance used to evaluate similarity. Possible choices are:
@@ -193,8 +193,8 @@ def compute_RTG_contribution_matrix(
         }
     :param exclude_confounders_dict: dictionary with confounders and their combinations
         Example: {
-            'donor': ['donor'],
-            'clone': ['clone']
+            'exclude same donor': ['donor'],
+            'exclude same clone': ['clone']
         }
         Score is computed for all pairs of included and excluded confounding variables.
     :param embeddings: numerical description of each sample. DataFrame or np.array of shape [n_sample, n_features].
