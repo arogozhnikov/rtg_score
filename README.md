@@ -14,7 +14,7 @@ and embeddings provided by deep learning.
 
 ## Usage 
 
-`rtg_score` is python package. Installation:
+`rtg_score` is a Python package. Installation:
 ```bash
 pip install rtg_score
 ```
