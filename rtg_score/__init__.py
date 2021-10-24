@@ -9,7 +9,6 @@ import numpy as np
 import pandas as pd
 from scipy.stats import mannwhitneyu
 from sklearn.metrics import roc_auc_score, pairwise_distances as sklearn_pairwise_distances
-import pdb
 
 __version__ = '0.1.0'
 
