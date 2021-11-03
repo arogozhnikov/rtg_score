@@ -7,6 +7,7 @@ from typing import List, Dict
 
 import numpy as np
 import pandas as pd
+from scipy.stats import mannwhitneyu
 from sklearn.metrics import roc_auc_score, pairwise_distances as sklearn_pairwise_distances
 
 __version__ = '0.1.0'
@@ -50,6 +51,14 @@ def compute_pairwise_distances(
         assert pairwise_distances.shape == (n_samples, n_samples), 'wrong shape of distances passed'
         return pairwise_distances
 
+def compute_mannwhitneyu_roc_auc_score(x, y):
+    x, y = x[~np.isnan(x)], y[~np.isnan(y)]
+    if len(x) > 0 and len(y) > 0:
+        res = mannwhitneyu(x, y, alternative='greater')
+        return res.statistic / len(x) / len(y)
+    else:
+        return np.nan
+
 
 def compute_RTG_score(
         metadata: pd.DataFrame,
@@ -59,6 +68,7 @@ def compute_RTG_score(
         embeddings=None,
         metric='euclidean',
         pairwise_distances=None,
+        method: str = 'RTG',
         minimal_n_samples=30,
         use_fast_computations='auto',
 ) -> float:
@@ -82,6 +92,8 @@ def compute_RTG_score(
         - other distances from scipy and sklearn are supported
     :param pairwise_distances: alternatively distances between all the pairs can be readily provided.
         np.array of shape [n_samples, n_samples] (in this case, don't pass embeddings and metric)
+    :param method: either 'RTG', 'mannwhitneyu_per_sample', or 'mannwhitneyu_pooled'.
+        'RTG' is currently 10x faster and the recommended method; others are for research purposes.
     :param minimal_n_samples: number of samples that can provide ranking (otherwise function returns NaN).
         E.g. if both include and exclude are the same confounders, or if latter includes former, there are no elements
         that can provide ranking.
@@ -110,54 +122,84 @@ def compute_RTG_score(
     # recoding for simpler comparison
     inc_indices = to_codes(inc_cat)
 
-    if use_fast_computations == 'auto':
-        use_fast_computations: bool = n_samples > 300
+    # compute target and mask
+    target = inc_indices[:, np.newaxis] == inc_indices[np.newaxis, :]
+    mask = True
+    for exc_indices in exc_indices_collection:
+        mask = mask & (exc_indices[:, np.newaxis] != exc_indices[np.newaxis, :])
 
-    if use_fast_computations:
-        target = inc_indices[:, np.newaxis] == inc_indices[np.newaxis, :]
-        mask = True
-        for exc_indices in exc_indices_collection:
-            mask = mask & (exc_indices[:, np.newaxis] != exc_indices[np.newaxis, :])
-        has_ones = (mask & target).any(axis=1)
-        has_zeros = (mask & ~target).any(axis=1)
-        good_rows = np.where(has_ones & has_zeros)[0]
 
-        if len(good_rows) < minimal_n_samples:
-            return np.nan
+    if method == 'mannwhitneyu_per_sample':
+        mask = np.triu(mask, 1)
+        scores = []
+        in_group = mask & target
+        out_group = mask & ~target
 
-        roc_auc_scores = []
-        for start in range(0, len(good_rows), 1000):
-            distances = pairwise_distances[good_rows[start: start + 1000]]
-            order_y = np.argsort(-distances, axis=1)
-            order_x = good_rows[start: start + 1000][:, None]
+        for sample_idx, sample_dist in enumerate(pairwise_distances):
+            in_group_dist = sample_dist[in_group[sample_idx, :]]
+            out_group_dist = sample_dist[out_group[sample_idx, :]]
+            score = compute_mannwhitneyu_roc_auc_score(
+            -in_group_dist,
+            -out_group_dist
+            )
+            scores.append(score)
+        return np.nanmean(scores)
 
-            target_rows = target[order_x, order_y]
-            mask_rows = mask[order_x, order_y]
+    elif method == 'mannwhiteneyu_pooled':
+        mask = np.triu(mask, 1)
+        return compute_mannwhitneyu_roc_auc_score(
+            -pairwise_distances[mask & target].flatten(),
+            -pairwise_distances[mask & ~target].flatten()
+        )
+    
+    elif method == 'RTG':
+        if use_fast_computations == 'auto':
+            use_fast_computations: bool = n_samples > 300
 
-            fraction_of_zeros_covered = (mask_rows & ~target_rows).astype('float32')
-            fraction_of_zeros_covered = np.cumsum(fraction_of_zeros_covered, axis=1)
-            fraction_of_zeros_covered /= fraction_of_zeros_covered[:, [-1]]
+        if use_fast_computations:
+            has_ones = (mask & target).any(axis=1)
+            has_zeros = (mask & ~target).any(axis=1)
+            good_rows = np.where(has_ones & has_zeros)[0]
 
-            scores = (fraction_of_zeros_covered * mask_rows * target_rows).sum(axis=1)
-            scores /= (mask_rows & target_rows).astype('float32').sum(axis=1)
-            roc_auc_scores += list(scores)
-        return np.mean(roc_auc_scores)
+            if len(good_rows) < minimal_n_samples:
+                return np.nan
+
+            roc_auc_scores = []
+            for start in range(0, len(good_rows), 1000):
+                distances = pairwise_distances[good_rows[start: start + 1000]]
+                order_y = np.argsort(-distances, axis=1)
+                order_x = good_rows[start: start + 1000][:, None]
+
+                target_rows = target[order_x, order_y]
+                mask_rows = mask[order_x, order_y]
+
+                fraction_of_zeros_covered = (mask_rows & ~target_rows).astype('float32')
+                fraction_of_zeros_covered = np.cumsum(fraction_of_zeros_covered, axis=1)
+                fraction_of_zeros_covered /= fraction_of_zeros_covered[:, [-1]]
+
+                scores = (fraction_of_zeros_covered * mask_rows * target_rows).sum(axis=1)
+                scores /= (mask_rows & target_rows).astype('float32').sum(axis=1)
+                roc_auc_scores += list(scores)
+            return np.mean(roc_auc_scores)
+
+        else:
+            aucs = []
+            for sample in range(n_samples):
+                mask = True
+                for exc_indices in exc_indices_collection:
+                    mask = mask & (exc_indices != exc_indices[sample])
+                target = inc_indices == inc_indices[sample]
+                distances = pairwise_distances[sample]
+                if len(set(target[mask])) == 2:
+                    aucs.append(roc_auc_score(target[mask], -distances[mask]))
+
+            if len(aucs) < minimal_n_samples:
+                return np.nan
+            else:
+                return float(np.mean(aucs))
+
     else:
-        aucs = []
-        for sample in range(n_samples):
-            mask = True
-            for exc_indices in exc_indices_collection:
-                mask = mask & (exc_indices != exc_indices[sample])
-            target = inc_indices == inc_indices[sample]
-            distances = pairwise_distances[sample]
-            if len(set(target[mask])) == 2:
-                aucs.append(roc_auc_score(target[mask], -distances[mask]))
-
-    if len(aucs) < minimal_n_samples:
-        return np.nan
-    else:
-        return float(np.mean(aucs))
-
+        raise RuntimeError(f'Unknown method {method}')
 
 def fast_roc_auc(target, distances):
     order = np.argsort(distances)
@@ -178,6 +220,7 @@ def compute_RTG_contribution_matrix(
         embeddings=None,
         metric='euclidean',
         pairwise_distances=None,
+        method='RTG',
         minimal_n_samples=30,
         use_fast_computations='auto',
 ):
@@ -204,6 +247,8 @@ def compute_RTG_contribution_matrix(
         - 'hellinger', relevant e.g. for cell type fractions in scRNA-seq
         - 'cosine', frequently more appropriate for DL embeddings
         - other distances from scipy and sklearn are supported
+    :param method: either 'RTG', 'mannwhitneyu_per_sample', or 'mannwhitneyu_pooled'.
+        'RTG' is currently 10x faster and the recommended method; others are for research purposes.
     :param pairwise_distances: alternatively distances between all the pairs can be readily provided.
         np.array of shape [n_samples, n_samples] (in this case, don't pass embeddings and metric)
     :param minimal_n_samples: number of samples that can provide ranking (otherwise function returns NaN).
@@ -224,6 +269,7 @@ def compute_RTG_contribution_matrix(
                 include_confounders=included,
                 exclude_confounders=excluded,
                 pairwise_distances=pairwise_distances,
+                method=method,
                 minimal_n_samples=minimal_n_samples,
                 use_fast_computations=use_fast_computations,
             )
