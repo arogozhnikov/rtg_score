@@ -92,7 +92,8 @@ def compute_RTG_score(
         - other distances from scipy and sklearn are supported
     :param pairwise_distances: alternatively distances between all the pairs can be readily provided.
         np.array of shape [n_samples, n_samples] (in this case, don't pass embeddings and metric)
-    :param method: either 'RTG' or 'mannwhitneyu'. 'RTG' is currently 10x faster
+    :param method: either 'RTG', 'mannwhitneyu_per_sample', or 'mannwhitneyu_pooled'.
+        'RTG' is currently 10x faster and the recommended method; others are for research purposes.
     :param minimal_n_samples: number of samples that can provide ranking (otherwise function returns NaN).
         E.g. if both include and exclude are the same confounders, or if latter includes former, there are no elements
         that can provide ranking.
@@ -127,11 +128,29 @@ def compute_RTG_score(
     for exc_indices in exc_indices_collection:
         mask = mask & (exc_indices[:, np.newaxis] != exc_indices[np.newaxis, :])
 
-    if method == 'mannwhitneyu':
+
+    if method == 'mannwhitneyu_per_sample':
+        mask = np.triu(mask, 1)
+        scores = []
+        in_group = mask & target
+        out_group = mask & ~target
+
+        for sample_idx, sample_dist in enumerate(pairwise_distances):
+            in_group_dist = sample_dist[in_group[sample_idx, :]]
+            out_group_dist = sample_dist[out_group[sample_idx, :]]
+            score = compute_mannwhitneyu_roc_auc_score(
+            -in_group_dist,
+            -out_group_dist
+            )
+            scores.append(score)
+        return np.nanmean(scores)
+
+    elif method == 'mannwhiteneyu_pooled':
+        mask = np.triu(mask, 1)
         return compute_mannwhitneyu_roc_auc_score(
             -pairwise_distances[mask & target].flatten(),
             -pairwise_distances[mask & ~target].flatten()
-    )
+        )
     
     elif method == 'RTG':
         if use_fast_computations == 'auto':
@@ -179,6 +198,8 @@ def compute_RTG_score(
             else:
                 return float(np.mean(aucs))
 
+    else:
+        raise RuntimeError(f'Unknown method {method}')
 
 def fast_roc_auc(target, distances):
     order = np.argsort(distances)
@@ -226,7 +247,8 @@ def compute_RTG_contribution_matrix(
         - 'hellinger', relevant e.g. for cell type fractions in scRNA-seq
         - 'cosine', frequently more appropriate for DL embeddings
         - other distances from scipy and sklearn are supported
-    :param method: either 'RTG' or 'mannwhitneyu'. 'RTG' is currently 10x faster
+    :param method: either 'RTG', 'mannwhitneyu_per_sample', or 'mannwhitneyu_pooled'.
+        'RTG' is currently 10x faster and the recommended method; others are for research purposes.
     :param pairwise_distances: alternatively distances between all the pairs can be readily provided.
         np.array of shape [n_samples, n_samples] (in this case, don't pass embeddings and metric)
     :param minimal_n_samples: number of samples that can provide ranking (otherwise function returns NaN).
